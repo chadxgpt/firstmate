@@ -1,0 +1,46 @@
+=== 1. bind ship-900 to ENG-900 ===
+bound ship-900 -> ENG-900
+
+=== 2. queue a completion comment + Done status ===
+queued ship-900 -> ENG-900 (2d171abd67de7f437d60b6078ae1bc2bee35f3f0beefb0b30afa3b86e0312b2f)
+
+=== 3. write the task's meta record (as if ship-900 is ready to tear down) ===
+
+=== 4. run the completion gate (fm-linear-sync.sh guard-work), the exact check
+===    fm-teardown.sh's cleanup runs before it will tear down a task, BEFORE
+===    delivering the handback ===
+queued  task=ship-900  issue=ENG-900  status=Done  delivery=2d171abd67de7f437d60b6078ae1bc2bee35f3f0beefb0b30afa3b86e0312b2f
+--> exit code: 1
+PASS: the completion gate refused while ENG-900 was still stale
+
+=== 5. deliver the queued handback to Linear (the fake workspace) ===
+delivered ship-900 -> ENG-900 (2d171abd67de7f437d60b6078ae1bc2bee35f3f0beefb0b30afa3b86e0312b2f, posted)
+
+=== 6. Linear issue state after delivery ===
+ENG-900 state is now: Done
+ENG-900 comments:
+{"id":"c1","body":"Shipped in PR #42.\n\n<!-- fm-linear-sync:2d171abd67de7f437d60b6078ae1bc2bee35f3f0beefb0b30afa3b86e0312b2f -->"}
+
+=== 7. re-run the completion gate AFTER delivering the handback ===
+--> exit code: 0
+PASS: the completion gate cleared once the Linear issue was made current
+
+=== manual intent check complete ===
+
+--- Context ---
+Branch: fm/fm-linear-sync-hook-r1
+Target commit: 54ea420f2e1399a9ff3ff5b23cfd354a98b0ee87
+This is an independent, hand-driven CLI transcript (not a run of tests/fm-linear-sync.test.sh)
+exercising bin/fm-linear-sync.sh directly against a hermetic fake Linear transport, following
+the same fake-transport contract documented in docs/verification/linear-sync.md. It demonstrates
+the user intent end-to-end: a task's completion gate (fm-linear-sync.sh guard-work, the exact
+check bin/fm-teardown.sh's cleanup runs before tearing a task down) refuses while the bound
+Linear issue is stale, and clears only after the handback (comment + status) is actually
+delivered to Linear.
+
+Note: bin/fm-teardown.sh itself was not invoked directly, because this session runs as the
+test phase inside an active no-mistakes gate, and fm-teardown.sh correctly refuses to run
+under that condition ("no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)").
+guard-work is the exact primitive fm-teardown.sh calls internally for this gate
+(see bin/fm-teardown.sh's "The captain's rule" block), so this is a faithful, unmodified
+exercise of the same gate logic.
